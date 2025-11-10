@@ -44,14 +44,14 @@ router.post("/device", async (req, res) => {
         const devicesData = [];
         for (const device of devicesArray) {
             const { deviceAddress, deviceData } = device;
-            console.log("device : ",device);
+            // console.log("device : ",device);
             // const petInfos = await Pet.findAll();
             // console.log("petInfos : ", petInfos);
             const petInfo = await Pet.findOne({where: {device_address : deviceAddress}});
             if (!petInfo) {
                 return res.status(400).send("펫 정보를 찾을 수 없습니다.");
             }
-
+            
             const petName = petInfo.name;
             console.log("petName : ", petName);
             const deviceName = deviceAddress.replace(/:/g, '-');

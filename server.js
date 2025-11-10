@@ -32,7 +32,7 @@ db.sequelize.sync().then(async () => {
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://211.188.55.131:5050", "http://localhost", "http://192.168.0.14"],
+    origin: ["http://localhost:3000", "http://211.188.55.131:5050", "http://localhost", "http://192.168.0.14", "http://49.50.132.197:5050"],
     credentials: true,
   })
 );
