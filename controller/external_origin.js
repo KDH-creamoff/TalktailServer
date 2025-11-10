@@ -3,8 +3,6 @@ const router = express.Router();
 const path = require("path");
 const fs = require("fs");
 const { broadcastDeviceData } = require("../websocket/broadcaster");
-const {Pet} = require("../models");
-const {Device} = require("../models");
 
 // 디바이스별 활성 파일명과 마지막 데이터 수신 시간을 저장
 const deviceSessions = new Map();
@@ -44,16 +42,7 @@ router.post("/device", async (req, res) => {
         const devicesData = [];
         for (const device of devicesArray) {
             const { deviceAddress, deviceData } = device;
-            console.log("device : ",device);
-            // const petInfos = await Pet.findAll();
-            // console.log("petInfos : ", petInfos);
-            const petInfo = await Pet.findOne({where: {device_address : deviceAddress}});
-            if (!petInfo) {
-                return res.status(400).send("펫 정보를 찾을 수 없습니다.");
-            }
 
-            const petName = petInfo.name;
-            console.log("petName : ", petName);
             const deviceName = deviceAddress.replace(/:/g, '-');
             const currentTime = Date.now();
 
@@ -62,9 +51,8 @@ router.post("/device", async (req, res) => {
 
             // 세션이 없거나 타임아웃된 경우 새 세션 시작
             if (!session || (currentTime - session.lastUpdate > SESSION_TIMEOUT)) {
-                // 서울 시간대로 변환하여 YYYYMMDD_HHMMSS 형식으로 생성
-                const formatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: 'Asia/Seoul',
+                const fileDate = now.toLocaleString("ko-KR", {
+                    timeZone: "Asia/Seoul",
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
@@ -72,23 +60,12 @@ router.post("/device", async (req, res) => {
                     minute: '2-digit',
                     second: '2-digit',
                     hour12: false
-                });
-                const parts = formatter.formatToParts(now);
-                const year = parts.find(p => p.type === 'year').value;
-                const month = parts.find(p => p.type === 'month').value;
-                const day = parts.find(p => p.type === 'day').value;
-                const hour = parts.find(p => p.type === 'hour').value;
-                const minute = parts.find(p => p.type === 'minute').value;
-                const second = parts.find(p => p.type === 'second').value;
-                const millisecond = String(now.getMilliseconds()).padStart(3, '0');
-                const fileDate = `${year}${month}${day}_${hour}${minute}${second}`;
-                const timestamp = `${hour}:${minute}:${second}:${millisecond}`;
+                }).replace(/\. /g, '-').replace(/\./g, '').replace(/:/g, '-');
 
-                const fileName = `${petName}_${deviceName}_${fileDate}.csv`;
+                const fileName = `${deviceName}_${fileDate}.csv`;
                 session = {
                     fileName: fileName,
-                    lastUpdate: currentTime,
-                    timestamp,
+                    lastUpdate: currentTime
                 };
                 deviceSessions.set(deviceAddress, session);
             } else {
@@ -96,14 +73,9 @@ router.post("/device", async (req, res) => {
                 session.lastUpdate = currentTime;
             }
 
-            const fileDir = path.join(__dirname, "..", "data", deviceName);
-            if (!fs.existsSync(fileDir)) {
-                fs.mkdirSync(fileDir, { recursive: true });
-            }
             // 파일명 생성 (디바이스주소_날짜시분초.csv)
             const fileName = session.fileName;
-            
-            const filePath = path.join(dataDir, deviceName, fileName);
+            const filePath = path.join(dataDir, fileName);
 
             // 파일이 존재하는지 확인
             const fileExists = fs.existsSync(filePath);
@@ -113,11 +85,11 @@ router.post("/device", async (req, res) => {
 
             // 파일이 없으면 헤더 추가
             if (!fileExists) {
-                csvContent += "timestamp,cnt,ir,red,green,spo2,hr,temp,battery\n";
+                csvContent += "timestamp,ir,red,green,spo2,hr,temp,battery\n";
             }
 
             // 데이터 추가
-            csvContent += deviceData.map(row => `${session.timestamp},${row}`).join("\n") + "\n";
+            csvContent += deviceData.map(row => row).join("\n") + "\n";
 
             // CSV 파일에 데이터 추가 (append mode)
             fs.appendFileSync(filePath, csvContent, 'utf8');
